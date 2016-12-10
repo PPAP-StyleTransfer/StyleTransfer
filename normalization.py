@@ -32,10 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import theano
 import theano.tensor as T
 
-import .init
-import .nonlinearities
+import init
+import nonlinearities
 
-from .base import Layer
+from base import Layer
 
 
 __all__ = [
@@ -339,4 +339,4 @@ def batch_norm(layer, **kwargs):
         from .special import NonlinearityLayer
         nonlin_name = bn_name and bn_name + '_nonlin'
         layer = NonlinearityLayer(layer, nonlinearity, name=nonlin_name)
-return layer
+    return layer

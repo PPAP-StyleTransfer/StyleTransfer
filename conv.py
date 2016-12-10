@@ -4,6 +4,7 @@ import init
 import nonlinearities
 from utils import as_tuple
 import theano_extensions
+import extension_conv as conv
 
 from base import Layer
 
@@ -15,6 +16,8 @@ __all__ = [
     "Deconv2DLayer",
     "DilatedConv2DLayer",
 ]
+
+
 
 
 def conv_output_length(input_length, filter_size, stride, pad=0):
@@ -817,4 +820,4 @@ class DilatedConv2DLayer(BaseConvLayer):
         if any(s is None for s in output_size):
             output_size = self.get_output_shape_for(input.shape)[2:]
         conved = op(input.transpose(1, 0, 2, 3), self.W, output_size)
-return conved.transpose(1, 0, 2, 3)
+        return conved.transpose(1, 0, 2, 3)

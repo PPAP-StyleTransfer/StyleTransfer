@@ -1,7 +1,7 @@
 import theano.tensor as T
 
-from .base import Layer
-from .utils import as_tuple
+from base import Layer
+from utils import as_tuple
 
 __all__ = [
     "MaxPool1DLayer",
@@ -675,4 +675,4 @@ class GlobalPoolLayer(Layer):
         return input_shape[:2]
 
     def get_output_for(self, input, **kwargs):
-return self.pool_function(input.flatten(3), axis=2)
+        return self.pool_function(input.flatten(3), axis=2)

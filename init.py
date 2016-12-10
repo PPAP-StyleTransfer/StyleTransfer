@@ -10,8 +10,20 @@ Examples
 
 import numpy as np
 
-from .utils import floatX
-from .random import get_rng
+from utils import floatX
+
+_rng = np.random
+
+def get_rng():
+    """Get the package-level random number generator.
+    Returns
+    -------
+    :class:`numpy.random.RandomState` instance
+        The :class:`numpy.random.RandomState` instance passed to the most
+        recent call of :func:`set_rng`, or ``numpy.random`` if :func:`set_rng`
+        has never been called.
+    """
+    return _rng
 
 
 class Initializer(object):
@@ -335,4 +347,4 @@ class Orthogonal(Initializer):
         # pick the one with the correct shape
         q = u if u.shape == flat_shape else v
         q = q.reshape(shape)
-return floatX(self.gain * q)
+        return floatX(self.gain * q)

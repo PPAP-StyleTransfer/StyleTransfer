@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import theano.tensor as T
 
-import .utils
+import utils
 
 
 __all__ = [
@@ -291,4 +291,4 @@ class MergeLayer(Layer):
         :class:`Layer` class with multiple inputs. By default it raises
         `NotImplementedError`.
         """
-raise NotImplementedError
+        raise NotImplementedError

@@ -264,3 +264,10 @@ def conv1d_md(input, filters, image_shape, filter_shape, border_mode='valid',
         conved = T.set_subtensor(conved[:, :, num::num_steps], r_conved)
 
     return conved
+
+
+# TODO: conv1d_md_channelslast?
+
+# 2D convolutions
+
+# TODO

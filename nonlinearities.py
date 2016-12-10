@@ -216,10 +216,6 @@ def elu(x):
     saturation value for negative inputs, but is set to 1 for all experiments.
     It is omitted here.
     References
-    ----------
-    .. [1] Djork-Arné Clevert, Thomas Unterthiner, Sepp Hochreiter (2015):
-       Fast and Accurate Deep Network Learning by Exponential Linear Units
-       (ELUs), http://arxiv.org/abs/1511.07289
     """
     return theano.tensor.switch(x > 0, x, theano.tensor.exp(x) - 1)
 

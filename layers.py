@@ -3,17 +3,17 @@ import theano.tensor as T
 import theano
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from collections import OrderedDict
+from theano.sandbox.cuda import dnn
 
-from . import init
-from . import nonlinearities
-from . import utils
-from .utils import as_tuple, floatX
-from .random import get_rng
-from .base import Layer, MergeLayer
+import init
+import nonlinearities
+import utils
+from utils import as_tuple, floatX
+from base import Layer, MergeLayer
 
-from .conv import conv_output_length, BaseConvLayer
-from .pool import pool_output_length
-from .normalization import BatchNormLayer
+from conv import conv_output_length, BaseConvLayer
+from pool import pool_output_length
+from normalization import BatchNormLayer
 
 
 if not theano.sandbox.cuda.cuda_enabled:
@@ -31,8 +31,105 @@ __all__ = [
     "NonlinearityLayer",
     "Conv2DDNNLayer",
     "Pool2DLayer", 
+    "DropoutLayer",
+    "dropout"
 ]
 
+_rng = np.random
+
+class DropoutLayer(Layer):
+    """Dropout layer
+    Sets values to zero with probability p. See notes for disabling dropout
+    during testing.
+    Parameters
+    ----------
+    incoming : a :class:`Layer` instance or a tuple
+        the layer feeding into this layer, or the expected input shape
+    p : float or scalar tensor
+        The probability of setting a value to zero
+    rescale : bool
+        If ``True`` (the default), scale the input by ``1 / (1 - p)`` when
+        dropout is enabled, to keep the expected output mean the same.
+    shared_axes : tuple of int
+        Axes to share the dropout mask over. By default, each value can be
+        dropped individually. ``shared_axes=(0,)`` uses the same mask across
+        the batch. ``shared_axes=(2, 3)`` uses the same mask across the
+        spatial dimensions of 2D feature maps.
+    Notes
+    -----
+    The dropout layer is a regularizer that randomly sets input values to
+    zero; see [1]_, [2]_ for why this might improve generalization.
+    The behaviour of the layer depends on the ``deterministic`` keyword
+    argument passed to :func:`lasagne.layers.get_output`. If ``True``, the
+    layer behaves deterministically, and passes on the input unchanged. If
+    ``False`` or not specified, dropout (and possibly scaling) is enabled.
+    Usually, you would use ``deterministic=False`` at train time and
+    ``deterministic=True`` at test time.
+    See also
+    --------
+    dropout_channels : Drops full channels of feature maps
+    spatial_dropout : Alias for :func:`dropout_channels`
+    dropout_locations : Drops full pixels or voxels of feature maps
+    References
+    ----------
+    .. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
+           Salakhutdinov, R. R. (2012):
+           Improving neural networks by preventing co-adaptation of feature
+           detectors. arXiv preprint arXiv:1207.0580.
+    .. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
+           I., & Salakhutdinov, R. R. (2014):
+           Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
+           Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
+    """
+    def __init__(self, incoming, p=0.5, rescale=True, shared_axes=(),
+                 **kwargs):
+        super(DropoutLayer, self).__init__(incoming, **kwargs)
+        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+        self.p = p
+        self.rescale = rescale
+        self.shared_axes = tuple(shared_axes)
+
+    def get_output_for(self, input, deterministic=False, **kwargs):
+        if deterministic or self.p == 0:
+            return input
+        else:
+            # Using theano constant to prevent upcasting
+            one = T.constant(1)
+
+            retain_prob = one - self.p
+            if self.rescale:
+                input /= retain_prob
+
+            # use nonsymbolic shape for dropout mask if possible
+            mask_shape = self.input_shape
+            if any(s is None for s in mask_shape):
+                mask_shape = input.shape
+
+            # apply dropout, respecting shared axes
+            if self.shared_axes:
+                shared_axes = tuple(a if a >= 0 else a + input.ndim
+                                    for a in self.shared_axes)
+                mask_shape = tuple(1 if a in shared_axes else s
+                                   for a, s in enumerate(mask_shape))
+            mask = self._srng.binomial(mask_shape, p=retain_prob,
+                                       dtype=input.dtype)
+            if self.shared_axes:
+                bcast = tuple(bool(s == 1) for s in mask_shape)
+                mask = T.patternbroadcast(mask, bcast)
+            return input * mask
+
+dropout = DropoutLayer  # shortcut
+
+def get_rng():
+    """Get the package-level random number generator.
+    Returns
+    -------
+    :class:`numpy.random.RandomState` instance
+        The :class:`numpy.random.RandomState` instance passed to the most
+        recent call of :func:`set_rng`, or ``numpy.random`` if :func:`set_rng`
+        has never been called.
+    """
+    return _rng
 
 class InputLayer(Layer):
     """
@@ -88,7 +185,7 @@ class InputLayer(Layer):
 
     @Layer.output_shape.getter
     def output_shape(self):
-return self.shape
+        return self.shape
 
 class DenseLayer(Layer):
     """
@@ -186,7 +283,7 @@ class DenseLayer(Layer):
         activation = T.dot(input, self.W)
         if self.b is not None:
             activation = activation + self.b
-return self.nonlinearity(activation)
+        return self.nonlinearity(activation)
 class NonlinearityLayer(Layer):
     """
     lasagne.layers.NonlinearityLayer(incoming,
@@ -207,7 +304,7 @@ class NonlinearityLayer(Layer):
                              else nonlinearity)
 
     def get_output_for(self, input, **kwargs):
-return self.nonlinearity(input)
+        return self.nonlinearity(input)
 class Conv2DDNNLayer(BaseConvLayer):
     """
     lasagne.layers.Conv2DDNNLayer(incoming, num_filters, filter_size,
