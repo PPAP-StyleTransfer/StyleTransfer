@@ -1,6 +1,6 @@
 # StyleTransfer
-<<<<<<< HEAD
-ECBM 4040 Neural Network &amp; Deep learning Project
+ECBM 4040 Neural Network
+Deep learning Project
 Group PPAP
 
 files content:
